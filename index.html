@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firebase Google Authentication</title>
+  <style>
+    /* Global Styles */
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #89f7fe, #66a6ff);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    /* Container Styles */
+    .container {
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+      max-width: 400px;
+      text-align: center;
+    }
+
+    /* Title Styles */
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      color: #333;
+    }
+
+    /* Button Styles */
+    button {
+      display: block;
+      width: 80%;
+      margin: 15px auto;
+      padding: 12px 20px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #fff;
+      background-color: #4285f4;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #357ae8;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Hidden Section Styles */
+    .hidden {
+      display: none;
+    }
+
+    /* User Info Styles */
+    #user-info p {
+      margin: 10px 0;
+      font-size: 16px;
+      color: #555;
+    }
+
+    .profile-pic {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      margin: 15px 0;
+      border: 2px solid #4285f4;
+    }
+
+    /* Footer for Credits */
+    footer {
+      margin-top: 15px;
+      font-size: 12px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Google 帳號驗證</h1>
+    <button id="register-btn">註冊</button>
+    <button id="login-btn">登入</button>
+    <div id="user-info" class="hidden"></div>
+    <footer>© 2024 Firebase Authentication</footer>
+  </div>
+
+  <script type="module">
+    // Import Firebase libraries
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+    import { getDatabase, ref, set, get, update } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyB5_aCW7t7vRHDQkF33DDQqQZJrnIom4iY",
+      authDomain: "project-3297613218344890624.firebaseapp.com",
+      projectId: "project-3297613218344890624",
+      storageBucket: "project-3297613218344890624.firebasestorage.app",
+      messagingSenderId: "903773480963",
+      appId: "1:903773480963:web:5501f38a8719fb81b1c636",
+      measurementId: "G-QFV5HX68NP",
+      databaseURL: "https://project-3297613218344890624-default-rtdb.firebaseio.com/",
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const database = getDatabase(app);
+    const provider = new GoogleAuthProvider();
+
+    // Register functionality
+    document.getElementById("register-btn").addEventListener("click", async () => {
+      try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+
+        // Save user to database
+        const userRef = ref(database, `users/${user.uid}`);
+        const userData = {
+          name: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL,
+          lastLogin: new Date().toISOString(),
+        };
+
+        await set(userRef, userData);
+        alert("註冊成功！");
+        displayUserInfo(userData);
+      } catch (error) {
+        console.error("註冊失敗", error);
+        alert("註冊過程中發生錯誤，請重試！");
+      }
+    });
+
+    // Login functionality
+    document.getElementById("login-btn").addEventListener("click", async () => {
+      try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+
+        // Check if user is registered
+        const userRef = ref(database, `users/${user.uid}`);
+        const snapshot = await get(userRef);
+
+        if (snapshot.exists()) {
+          // Update last login time
+          const lastLogin = new Date().toISOString();
+          await update(userRef, { lastLogin });
+
+          alert("登入成功！");
+          displayUserInfo({
+            name: snapshot.val().name,
+            email: snapshot.val().email,
+            photoURL: snapshot.val().photoURL,
+            lastLogin,
+          });
+        } else {
+          alert("此帳號尚未註冊，請先註冊！");
+        }
+      } catch (error) {
+        console.error("登入失敗", error);
+        alert("登入過程中發生錯誤，請重試！");
+      }
+    });
+
+    // Display user information
+    function displayUserInfo(userData) {
+      document.getElementById("user-info").classList.remove("hidden");
+      document.getElementById("user-info").innerHTML = `
+        <p>👤 姓名: <strong>${userData.name}</strong></p>
+        <p>📧 信箱: <strong>${userData.email}</strong></p>
+        <img src="${userData.photoURL}" alt="User Photo" class="profile-pic" />
+        <p>🕒 最後登入時間: <strong>${new Date(userData.lastLogin).toLocaleString()}</strong></p>
+      `;
+    }
+  </script>
+</body>
+</html>
